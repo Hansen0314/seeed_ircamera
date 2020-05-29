@@ -49,19 +49,25 @@ hetaData = []
 lock = threading.Lock()
 minHue = 180
 maxHue = 360
-
+ChipType = "MLX90640"
 
 class DataReader(QThread):
+    
     drawRequire = pyqtSignal()
 
     I2C = 0,
     SERIAL = 1
     MODE = I2C
-
-    def __init__(self, port):
+    # pixel_num = 192
+    pixel_num = 768
+    def __init__(self, port,ChipType = "MLX90640"):
         super(DataReader, self).__init__()
         self.frameCount = 0
         # i2c mode
+        if ChipType == "MLX90640":
+            DataReader.pixel_num = 768
+        elif ChipType == "MLX90641":
+            DataReader.pixel_num = 192
         if port is None:
             self.dataHandle = seeed_mlx90640.grove_mxl90640()
             self.dataHandle.refresh_rate = seeed_mlx90640.RefreshRate.REFRESH_0_5_HZ
@@ -69,15 +75,16 @@ class DataReader(QThread):
         else:
             self.MODE = DataReader.SERIAL
             self.port = port
-            self.dataHandle = Serial(self.port, 2000000, timeout=5)
+            self.dataHandle = Serial(self.port, 115200, timeout=5)
             self.readData = self.serialRead
 
     def i2cRead(self):
-        hetData = [0]*768
+        hetData = [0]*DataReader.pixel_num
         self.dataHandle.getFrame(hetData)
         return hetData
 
     def serialRead(self):
+        # hetData = [0]*DataReader.pixel_num
         hetData = self.dataHandle.read_until(terminator=b'\r\n')
         hetData = str(hetData, encoding="utf8").split(",")
         hetData = hetData[:-1]
@@ -92,12 +99,12 @@ class DataReader(QThread):
             tempData = []
             nanCount = 0
 
+            # hetData = self.imageLarger(self.readData(),32,24)
             hetData = self.readData()
-
-            if  len(hetData) < 768 :
+            if  len(hetData) < DataReader.pixel_num :
                 continue
 
-            for i in range(0, 768):
+            for i in range(0, DataReader.pixel_num):
                 curCol = i % 32
                 newValueForNanPoint = 0
                 curData = None
@@ -107,7 +114,7 @@ class DataReader(QThread):
                 else:
                     interpolationPointCount = 0
                     sumValue = 0
-                    # print("curCol",curCol,"i",i)
+                    print("curCol",curCol,"i",i)
 
                     abovePointIndex = i-32
                     if (abovePointIndex>0):
@@ -116,7 +123,7 @@ class DataReader(QThread):
                             sumValue += float(hetData[abovePointIndex])
 
                     belowPointIndex = i+32
-                    if (belowPointIndex<768):
+                    if (belowPointIndex<DataReader.pixel_num):
                         print(" ")
                         if hetData[belowPointIndex] is not "nan" :
                             interpolationPointCount += 1
@@ -129,7 +136,7 @@ class DataReader(QThread):
                             sumValue += float(hetData[leftPointIndex])
 
                     rightPointIndex = i + 1
-                    if (belowPointIndex<768):
+                    if (belowPointIndex<DataReader.pixel_num):
                         if (curCol != 0):
                             if hetData[rightPointIndex] is not "nan" :
                                 interpolationPointCount += 1
@@ -164,14 +171,66 @@ class DataReader(QThread):
             self.frameCount = self.frameCount + 1
             print("data->" + str(self.frameCount))
         self.com.close()
-
+        
+    # 16 -> 32
+    # 12 -> 24
+    def imageLarger(self,image,XPixels,YPixels):
+        self.imageBuffer = [0]  * XPixels * YPixels
+        YIndex = 0
+        imageindex = 0
+        for Index in range(XPixels * YPixels):
+            if (Index // YPixels) % 2:
+                continue
+            imageindexTemp = imageindex + (Index - YIndex) // 2
+            if(imageindexTemp > 16 * 12 - 1):
+                imageindexTemp = 16 * 12 -1 
+            if Index % 2 :
+                self.imageBuffer[Index] = float(image[imageindexTemp])
+            elif (imageindexTemp - 1) < 0:
+                continue
+            else:
+                self.imageBuffer[Index] = (float(image[imageindexTemp]) + float(image[imageindexTemp - 1])) / 2
+            # print(Index,end=" ")
+            # print(imageindex + (Index - YIndex) // 2,end=" ")
+            if not (Index + 1) % YPixels:
+                YIndex = Index + YPixels + 1
+                imageindex = (Index + YPixels + 1 + 4) // 4
+                # print('\n')
+        for Index in range(XPixels * YPixels):
+            if not (Index // YPixels) % 2:
+                continue
+            if Index - YPixels < 0 :
+                self.imageBuffer[Index] = self.imageBuffer[Index + YPixels]
+            elif Index + YPixels > (XPixels * YPixels - 1):
+                self.imageBuffer[Index] = self.imageBuffer[Index - YPixels]
+            else:
+                self.imageBuffer[Index] = (self.imageBuffer[Index - YPixels] + self.imageBuffer[Index + YPixels]) / 2 
+            # print(Index,end=" ")
+            # print(imageindex + (Index - YIndex) // 2,end=" ")
+            if not (Index + 1) % YPixels:
+                YIndex = Index + YPixels + 1
+                imageindex = (Index + YPixels + 1 + 4) // 4
+                # print('\n')    
+        for Index in range(XPixels * YPixels):
+            print(self.imageBuffer[Index],end=" ")
+            # print(Index,end=" ")
+            if not (Index + 1) % YPixels:
+                print('\n')   
+        return self.imageBuffer
 
 class painter(QGraphicsView):
-    narrowRatio = int(sys.argv[4]) if len(sys.argv) >= 5 else 1
-    useBlur = sys.argv[5] != "False" if len(sys.argv) >= 6 else True
+    narrowRatio = int(sys.argv[5]) if len(sys.argv) >= 6 else 1
+    useBlur = sys.argv[6] != "False" if len(sys.argv) >= 7 else True
     pixelSize = int(15 / narrowRatio)
-    width = int (480 / narrowRatio)
+    width = int (480 / narrowRatio) 
     height = int(360 / narrowRatio)
+    if len(sys.argv) >= 3:
+        if sys.argv[2] == "MLX90641":
+            width = int (240 / narrowRatio) 
+            height = int(180 / narrowRatio)
+        elif sys.argv[2] == "MLX90640":
+            width = int (480 / narrowRatio) 
+            height = int(360 / narrowRatio)
     fontSize = int(30 / narrowRatio)
     anchorLineSize = int(100 / narrowRatio)
     ellipseRadius = int(8 / narrowRatio)
@@ -297,26 +356,29 @@ class painter(QGraphicsView):
         self.frameCount = self.frameCount + 1
         print("picture->"+str(self.frameCount))
 
-
 def run():
     global minHue
     global maxHue
+    global ChipType
     if len(sys.argv) >= 2 and sys.argv[1] == "-h":
-        print("Usage: %s [PortName] [minHue] [maxHue] [NarrowRatio] [UseBlur]" % sys.argv[0])
+        print("Usage: %s [PortName] [ChipType] [minHue] [maxHue] [NarrowRatio] [UseBlur]" % sys.argv[0])
         exit(0)
-    if len(sys.argv) >= 4:
-        minHue = int(sys.argv[2])
-        maxHue = int(sys.argv[3])
+    if len(sys.argv) >= 5:
+        minHue = int(sys.argv[3])
+        maxHue = int(sys.argv[4])
     if len(sys.argv) >= 2:
         port = sys.argv[1]
     else:
         port = None
+    if len(sys.argv) >= 3:
+        ChipType = sys.argv[2]
     app = QApplication(sys.argv)
     window = painter()
-    dataThread = DataReader(port)
+    dataThread = DataReader(port,ChipType)
     dataThread.drawRequire.connect(window.draw)
     dataThread.start()
     window.show()
     app.exec_()
+    
 
 run()
