@@ -35,11 +35,12 @@ sudo pip install seeed_python_ircamera -i https://pypi.tuna.tsinghua.edu.cn/simp
 ## Usage Notes
 On Windows, you should input the below command in cmd.exe:
 ```cmd
-ircamera PortName [minHue] [maxHue] [NarrowRatio] [EnableBlur]
+ircamera PortName ChipType [minHue] [maxHue] [NarrowRatio] [EnableBlur]
 ```
 Parameter indicate:
 ```
 "PortName"           : May look like "COM1" on windows system, or "tty", "usb" on unix system
+"ChipType"           : Support MLX90640 and MLX90641 for now
 "minHue" and "maxHue": Setting color gamut, default value: minHue=90, maxHue=360
 "NarrowRatio"        : Fill 3， 5， 6， 9， default value is 1
 "EnableBlur"         : True is EnableBlur, else False
@@ -47,7 +48,7 @@ Parameter indicate:
 
 On Unix/linux system, you should input below command in terminal:
 ```shell
-sudo ircamera PortName
+sudo ircamera PortName MLX90641
 ```
 just add sudo, the meaning of "PortName" the same as above.
 
