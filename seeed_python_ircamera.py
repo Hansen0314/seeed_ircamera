@@ -224,13 +224,10 @@ class painter(QGraphicsView):
     pixelSize = int(15 / narrowRatio)
     width = int (480 / narrowRatio) 
     height = int(360 / narrowRatio)
-    if len(sys.argv) >= 3:
-        if sys.argv[2] == "MLX90641":
-            width = int (240 / narrowRatio) 
-            height = int(180 / narrowRatio)
-        elif sys.argv[2] == "MLX90640":
-            width = int (480 / narrowRatio) 
-            height = int(360 / narrowRatio)
+    width = int(480 / narrowRatio) 
+    height = int(360 / narrowRatio)    
+    width = int (480 / narrowRatio) 
+    height = int(360 / narrowRatio)
     fontSize = int(30 / narrowRatio)
     anchorLineSize = int(100 / narrowRatio)
     ellipseRadius = int(8 / narrowRatio)
@@ -249,6 +246,13 @@ class painter(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
+        if len(sys.argv) >= 3:
+            if sys.argv[2] == "MLX90641":
+                self.blurRaduis = 25
+                self.ChipType = "MLX90641"
+            elif sys.argv[2] == "MLX90640":
+                self.blurRaduis = 50
+                self.ChipType = "MLX90640"         
         # center het text item
         self.centerTextItem = QGraphicsTextItem()
         self.centerTextItem.setPos(self.width / 2 - self.fontSize, 0)
@@ -319,17 +323,32 @@ class painter(QGraphicsView):
             )
         # draw camera
         color = QColor()
-        for yIndex in range(int(self.height / self.pixelSize)):
-            for xIndex in range(int(self.width / self.pixelSize)):
-                tempData = constrain(mapValue(frame[index], minHet, maxHet, minHue, maxHue), minHue, maxHue)
-                color.setHsvF(tempData / 360, 1.0, 1.0)
-                p.fillRect(
-                    xIndex * self.pixelSize,
-                    yIndex * self.pixelSize,
-                    self.pixelSize, self.pixelSize,
-                    QBrush(color)
-                )
-                index = index + 1
+        if self.ChipType == "MLX90641":
+            for yIndex in range(int(self.height / self.pixelSize / 2 )):
+                for xIndex in range(int(self.width / self.pixelSize  / 2 )):
+                    tempData = constrain(mapValue(frame[index], minHet, maxHet, minHue, maxHue), minHue, maxHue)
+                    color.setHsvF(tempData / 360, 1.0, 1.0)
+                    p.fillRect(
+                        xIndex * self.pixelSize * 2,
+                        yIndex * self.pixelSize * 2 ,
+                        self.pixelSize * 2, self.pixelSize * 2,
+                        QBrush(color)
+                    )
+                    index = index + 1
+            if self.centerIndex == 0 or self.centerIndex>=192:
+                self.centerIndex = 6*16+8            
+        else:
+            for yIndex in range(int(self.height / self.pixelSiz)):
+                for xIndex in range(int(self.width / self.pixelSize)):
+                    tempData = constrain(mapValue(frame[index], minHet, maxHet, minHue, maxHue), minHue, maxHue)
+                    color.setHsvF(tempData / 360, 1.0, 1.0)
+                    p.fillRect(
+                        xIndex * self.pixelSize,
+                        yIndex * self.pixelSize,
+                        self.pixelSize, self.pixelSize,
+                        QBrush(color)
+                    )
+                    index = index + 1          
         self.cameraItem.setPixmap(self.cameraBuffer)
         # draw text
         p = QPainter(self.hetTextBuffer)
