@@ -1,6 +1,6 @@
 import sys
 import threading
-import seeed_mlx90640
+import seeed_mlx9064x
 from serial import Serial
 from PyQt5.QtWidgets import (
         QApplication,
@@ -68,9 +68,13 @@ class DataReader(QThread):
             DataReader.pixel_num = 768
         elif ChipType == "MLX90641":
             DataReader.pixel_num = 192
-        if port is None:
-            self.dataHandle = seeed_mlx90640.grove_mxl90640()
-            self.dataHandle.refresh_rate = seeed_mlx90640.RefreshRate.REFRESH_0_5_HZ
+        if port == 'I2C':
+            if ChipType == "MLX90640":
+                self.dataHandle = seeed_mlx9064x.grove_mxl90640()
+                self.dataHandle.refresh_rate = seeed_mlx9064x.RefreshRate.REFRESH_8_HZ
+            elif ChipType == "MLX90641":
+                self.dataHandle = seeed_mlx9064x.grove_mxl90641()
+                self.dataHandle.refresh_rate = seeed_mlx9064x.RefreshRate.REFRESH_8_HZ
             self.readData = self.i2cRead
         else:
             self.MODE = DataReader.SERIAL
@@ -172,51 +176,6 @@ class DataReader(QThread):
             print("data->" + str(self.frameCount))
         self.com.close()
         
-    # 16 -> 32
-    # 12 -> 24
-    def imageLarger(self,image,XPixels,YPixels):
-        self.imageBuffer = [0]  * XPixels * YPixels
-        YIndex = 0
-        imageindex = 0
-        for Index in range(XPixels * YPixels):
-            if (Index // YPixels) % 2:
-                continue
-            imageindexTemp = imageindex + (Index - YIndex) // 2
-            if(imageindexTemp > 16 * 12 - 1):
-                imageindexTemp = 16 * 12 -1 
-            if Index % 2 :
-                self.imageBuffer[Index] = float(image[imageindexTemp])
-            elif (imageindexTemp - 1) < 0:
-                continue
-            else:
-                self.imageBuffer[Index] = (float(image[imageindexTemp]) + float(image[imageindexTemp - 1])) / 2
-            # print(Index,end=" ")
-            # print(imageindex + (Index - YIndex) // 2,end=" ")
-            if not (Index + 1) % YPixels:
-                YIndex = Index + YPixels + 1
-                imageindex = (Index + YPixels + 1 + 4) // 4
-                # print('\n')
-        for Index in range(XPixels * YPixels):
-            if not (Index // YPixels) % 2:
-                continue
-            if Index - YPixels < 0 :
-                self.imageBuffer[Index] = self.imageBuffer[Index + YPixels]
-            elif Index + YPixels > (XPixels * YPixels - 1):
-                self.imageBuffer[Index] = self.imageBuffer[Index - YPixels]
-            else:
-                self.imageBuffer[Index] = (self.imageBuffer[Index - YPixels] + self.imageBuffer[Index + YPixels]) / 2 
-            # print(Index,end=" ")
-            # print(imageindex + (Index - YIndex) // 2,end=" ")
-            if not (Index + 1) % YPixels:
-                YIndex = Index + YPixels + 1
-                imageindex = (Index + YPixels + 1 + 4) // 4
-                # print('\n')    
-        for Index in range(XPixels * YPixels):
-            print(self.imageBuffer[Index],end=" ")
-            # print(Index,end=" ")
-            if not (Index + 1) % YPixels:
-                print('\n')   
-        return self.imageBuffer
 
 class painter(QGraphicsView):
     narrowRatio = int(sys.argv[5]) if len(sys.argv) >= 6 else 1
@@ -246,7 +205,7 @@ class painter(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
-        if len(sys.argv) >= 3:
+        if len(sys.argv) >= 2:
             if sys.argv[2] == "MLX90641":
                 self.blurRaduis = 25
                 self.ChipType = "MLX90641"
@@ -379,17 +338,14 @@ def run():
     global minHue
     global maxHue
     global ChipType
-    if len(sys.argv) >= 2 and sys.argv[1] == "-h":
-        print("Usage: %s [PortName] [ChipType] [minHue] [maxHue] [NarrowRatio] [UseBlur]" % sys.argv[0])
+    if len(sys.argv) <= 2 or sys.argv[1] == "-h":
+        print("Usage: %s PortName ChipType [minHue] [maxHue] [NarrowRatio] [UseBlur]" % sys.argv[0])
         exit(0)
     if len(sys.argv) >= 5:
         minHue = int(sys.argv[3])
         maxHue = int(sys.argv[4])
+    port = sys.argv[1]
     if len(sys.argv) >= 2:
-        port = sys.argv[1]
-    else:
-        port = None
-    if len(sys.argv) >= 3:
         ChipType = sys.argv[2]
     app = QApplication(sys.argv)
     window = painter()

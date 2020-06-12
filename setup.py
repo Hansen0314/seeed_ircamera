@@ -36,9 +36,8 @@ setup(
     author_email='874751353@qq.com',
 
     install_requires=[
-        'PyQt5',
         'pyserial',
-        'seeed-python-mlx90640'
+        'seeed-python-mlx9064x'
     ],
 
     # Choose your license
