@@ -114,7 +114,7 @@ class DataReader(QThread):
                 curData = None
 
                 if i < len(hetData) and isDigital(hetData[i]):
-                    curData = float(hetData[i])
+                    curData = float(format(hetData[i],'.2f'))
                 else:
                     interpolationPointCount = 0
                     sumValue = 0
