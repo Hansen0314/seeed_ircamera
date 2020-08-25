@@ -297,7 +297,7 @@ class painter(QGraphicsView):
             if self.centerIndex == 0 or self.centerIndex>=192:
                 self.centerIndex = 6*16+8            
         else:
-            for yIndex in range(int(self.height / self.pixelSiz)):
+            for yIndex in range(int(self.height / self.pixelSize)):
                 for xIndex in range(int(self.width / self.pixelSize)):
                     tempData = constrain(mapValue(frame[index], minHet, maxHet, minHue, maxHue), minHue, maxHue)
                     color.setHsvF(tempData / 360, 1.0, 1.0)

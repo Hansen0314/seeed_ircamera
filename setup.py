@@ -20,7 +20,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='seeed_python_ircamera',
-    version='1.9.2',
+    version='1.9.3',
     description='32 x 24 pixels IRCamera Application',
     long_description=long_description,
     long_description_content_type='text/markdown',
